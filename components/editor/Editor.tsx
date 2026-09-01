@@ -95,11 +95,48 @@ export default function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function insertBlock(type: string) {
+    editorRef.current?.blocks.insert(type);
+  }
+
   return (
     <div className="editor-wrapper">
       {!isReady && (
         <div className="text-sm text-gray-400 px-1 py-2">Loading editor…</div>
       )}
+
+      {isReady && (
+        <div className="editor-floating-bar">
+          <button type="button" onClick={() => insertBlock("header")}>
+            H
+          </button>
+          <button type="button" onClick={() => insertBlock("list")}>
+            List
+          </button>
+          <button type="button" onClick={() => insertBlock("quote")}>
+            Quote
+          </button>
+          <button type="button" onClick={() => insertBlock("code")}>
+            Code
+          </button>
+          <button type="button" onClick={() => insertBlock("table")}>
+            Table
+          </button>
+          <button type="button" onClick={() => insertBlock("image")}>
+            Image
+          </button>
+          <button type="button" onClick={() => insertBlock("latex")}>
+            Math
+          </button>
+          <button type="button" onClick={() => insertBlock("mermaid")}>
+            Diagram
+          </button>
+          <button type="button" onClick={() => insertBlock("notebook")}>
+            Notebook
+          </button>
+        </div>
+      )}
+
       <div ref={holderRef} className="editorjs-holder" />
     </div>
   );
