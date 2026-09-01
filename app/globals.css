@@ -25,13 +25,18 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* --- Editor.js container --- */
+/* ==========================================================================
+   Editor.js — typography
+   Tailwind's base reset strips default heading/paragraph styles, so we
+   restore them explicitly, scoped to the editor canvas.
+   ========================================================================== */
+
 .editorjs-holder {
   min-height: 200px;
 }
 
 .editorjs-holder .codex-editor__redactor {
-  padding-bottom: 120px !important;
+  padding-bottom: 160px !important;
 }
 
 .editorjs-holder .ce-block__content,
@@ -39,12 +44,399 @@ body {
   max-width: 100% !important;
 }
 
+.editorjs-holder h1,
+.editorjs-holder h2,
+.editorjs-holder h3,
+.editorjs-holder h4 {
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0.6em 0 0.3em;
+}
+.editorjs-holder h1 { font-size: 2rem; }
+.editorjs-holder h2 { font-size: 1.6rem; }
+.editorjs-holder h3 { font-size: 1.3rem; }
+.editorjs-holder h4 { font-size: 1.1rem; }
+
+.editorjs-holder .ce-paragraph {
+  font-size: 1rem;
+  line-height: 1.7;
+  margin: 0.4em 0;
+}
+
+.editorjs-holder ul,
+.editorjs-holder ol {
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+}
+.editorjs-holder ul { list-style: disc; }
+.editorjs-holder ol { list-style: decimal; }
+.editorjs-holder li { margin: 0.2em 0; line-height: 1.6; }
+
+.editorjs-holder blockquote,
+.editorjs-holder .cdx-quote {
+  border-left: 3px solid var(--foreground);
+  padding-left: 1em;
+  margin: 0.6em 0;
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground) 75%, transparent);
+}
+
+.editorjs-holder code,
+.editorjs-holder .cdx-code,
+.editorjs-holder .ce-code__textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  border-radius: 6px;
+}
+
+.editorjs-holder .ce-code__textarea {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+
+.editorjs-holder .tc-table {
+  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+}
+
+/* ==========================================================================
+   Editor.js — floating toolbar & toolbox
+   Default Editor.js chrome is nearly invisible on a plain background.
+   Give it a clear card, a fixed max width, and keep the plus/settings
+   controls comfortably visible near the active block.
+   ========================================================================== */
+
+.editorjs-holder .ce-toolbar__plus,
+.editorjs-holder .ce-toolbar__settings-btn {
+  background: var(--background);
+  border: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  border-radius: 8px;
+  color: var(--foreground);
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.editorjs-holder .ce-toolbar__plus:hover,
+.editorjs-holder .ce-toolbar__settings-btn:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  border-color: var(--foreground);
+}
+
+.editorjs-holder .ce-inline-toolbar,
+.editorjs-holder .ce-toolbox,
+.editorjs-holder .ce-conversion-toolbar,
+.editorjs-holder .ce-settings {
+  background: var(--background);
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+
+.editorjs-holder .ce-popover-item:hover,
+.editorjs-holder .ce-toolbox__button:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.editorjs-holder .ce-inline-tool,
+.editorjs-holder .ce-inline-toolbar__dropdown {
+  color: var(--foreground);
+}
+.editorjs-holder .ce-inline-tool--active,
+.editorjs-holder .ce-inline-tool:hover {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* A persistent floating action bar docked to the top of the editor, always
+   visible rather than only appearing on hover/selection. */
+.editor-floating-bar {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  margin: 0 auto 1.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--background);
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--foreground) 10%, transparent);
+  font-size: 0.8rem;
+}
+
+.editor-floating-bar button {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--foreground);
+  font-weight: 500;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.editor-floating-bar button:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  border-color: color-mix(in srgb, var(--foreground) 18%, transparent);
+}
+
+/* ==========================================================================
+   Custom blocks — latex, mermaid, math paragraph, notebook
+   Neutral styling that inherits from the app's own colors instead of a
+   separate hardcoded dark theme.
+   ========================================================================== */
+
+.custom-block {
+  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+  border-radius: 10px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+.custom-block-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.custom-block-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--foreground) 55%, transparent);
+}
+
+.custom-block-toggle {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.custom-block-toggle:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.custom-block-textarea {
+  width: 100%;
+  min-height: 90px;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-radius: 8px;
+  padding: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+}
+.custom-block-textarea:focus {
+  border-color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.custom-block-preview {
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: var(--background);
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 8px;
+  overflow-x: auto;
+  min-height: 40px;
+}
+
+.custom-block-placeholder {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  font-size: 13px;
+}
+
+.custom-block-error {
+  color: #b91c1c;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  padding: 6px 2px;
+}
+
+.custom-block-inline-error {
+  color: #b91c1c;
+  background: color-mix(in srgb, #b91c1c 10%, transparent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+}
+
 .oro-inline-math {
   display: inline-block;
   padding: 0 2px;
 }
 
+/* --- Notebook block --- */
 
+.notebook-block {
+  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+  border-radius: 10px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+  position: relative;
+}
 
+.nb-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 25%, transparent);
+  background: var(--background);
+  color: var(--foreground);
+  cursor: pointer;
+  z-index: 1;
+}
+.nb-toggle:hover {
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
 
+.nb-textarea {
+  width: 100%;
+  min-height: 160px;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-radius: 8px;
+  padding: 12px;
+  padding-top: 34px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+}
+.nb-textarea:focus {
+  border-color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.nb-preview {
+  padding: 16px;
+  padding-top: 34px;
+  background: var(--background);
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 8px;
+  min-height: 60px;
+}
+
+.nb-empty {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  font-size: 13px;
+}
+
+.nb-heading { font-weight: 700; line-height: 1.3; margin: 0.5em 0 0.25em; }
+.nb-h1 { font-size: 1.8rem; }
+.nb-h2 { font-size: 1.5rem; }
+.nb-h3 { font-size: 1.25rem; }
+.nb-h4, .nb-h5, .nb-h6 { font-size: 1.05rem; }
+
+.nb-paragraph { line-height: 1.7; margin: 0.4em 0; }
+
+.nb-list { padding-left: 1.4em; margin: 0.4em 0; }
+.nb-list li { margin: 0.2em 0; line-height: 1.6; }
+
+.nb-checklist { list-style: none; padding-left: 0; margin: 0.4em 0; }
+.nb-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0.25em 0;
+}
+.nb-checkbox {
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--foreground) 40%, transparent);
+  border-radius: 3px;
+}
+.nb-checkbox.checked {
+  background: var(--foreground);
+}
+
+.nb-blockquote {
+  border-left: 3px solid var(--foreground);
+  padding-left: 1em;
+  margin: 0.6em 0;
+  font-style: italic;
+  color: color-mix(in srgb, var(--foreground) 75%, transparent);
+}
+
+.nb-hr {
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  margin: 1em 0;
+}
+
+.nb-code-block {
+  position: relative;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+.nb-code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85em;
+}
+.nb-code-lang {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+.nb-inline-code {
+  font-family: ui-monospace, monospace;
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.nb-error {
+  color: #b91c1c;
+  background: color-mix(in srgb, #b91c1c 10%, transparent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.nb-mermaid-container {
+  display: flex;
+  justify-content: center;
+  margin: 0.6em 0;
+}
+.nb-mermaid-placeholder {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  font-size: 13px;
+}
+
+.nb-admonition {
+  border: 1px solid color-mix(in srgb, var(--foreground) 18%, transparent);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 0.6em 0;
+}
+.nb-admonition-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.nb-admonition-body { line-height: 1.6; }
 
