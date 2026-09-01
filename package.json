@@ -31,6 +31,7 @@
     "@editorjs/simple-image": "^1.6.0",
     "@editorjs/warning": "^1.4.1",
     "@phigoro/editorjs-toc": "^1.1.11",
+    "dexie": "^4.4.5",
     "editorjs-text-alignment-blocktune": "^1.0.3",
     "katex": "^0.13.24",
     "docx": "^9.7.1",
@@ -63,6 +64,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^6"
   }
 }
