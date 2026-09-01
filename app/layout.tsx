@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Oro",
-  description: "A small, focused block editor.",
+  title: "Scribex",
+  description: "Advanced Editor for Local Documents.",
 };
 
 export default function RootLayout({
