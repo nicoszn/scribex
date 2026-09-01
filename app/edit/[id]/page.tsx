@@ -10,7 +10,6 @@ import {
   getDocument,
   updateDocument,
   deleteDocument,
-  type Document,
 } from "@/lib/db";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -27,15 +26,15 @@ export default function EditDocumentPage() {
   );
   const [title, setTitle] = useState("Untitled");
   const [content, setContent] = useState<object | undefined>(undefined);
-  const [draft, setDraft] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [notFound, setNotFound] = useState(false);
 
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingContent = useRef<object | null>(null);
+  const titleRef = useRef(title);
+  titleRef.current = title;
 
-  // Load or create the document on mount.
   useEffect(() => {
     let cancelled = false;
 
@@ -45,9 +44,7 @@ export default function EditDocumentPage() {
         if (cancelled) return;
         setDocId(newId);
         setContent({ blocks: [], time: Date.now(), version: "2.31.6" });
-        setDraft(true);
         setLoading(false);
-        // Swap the URL to the real id without a full navigation/remount.
         router.replace(`/edit/${newId}`);
       } else {
         const id = Number(params.id);
@@ -61,7 +58,6 @@ export default function EditDocumentPage() {
         setDocId(id);
         setTitle(existing.title);
         setContent(existing.content);
-        setDraft(existing.draft ?? true);
         setLoading(false);
       }
     }
@@ -70,28 +66,22 @@ export default function EditDocumentPage() {
     return () => {
       cancelled = true;
     };
-    // Only run once per mounted page instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const flushSave = useCallback(
-    async (overrides?: Partial<Pick<Document, "title" | "content" | "draft">>) => {
-      if (!docId) return;
-      setSaveState("saving");
-      try {
-        await updateDocument(docId, {
-          title,
-          content: pendingContent.current ?? content ?? {},
-          draft,
-          ...overrides,
-        });
-        setSaveState("saved");
-      } catch {
-        setSaveState("error");
-      }
-    },
-    [docId, title, content, draft],
-  );
+  const flushSave = useCallback(async () => {
+    if (!docId) return;
+    setSaveState("saving");
+    try {
+      await updateDocument(docId, {
+        title: titleRef.current,
+        content: pendingContent.current ?? content ?? {},
+      });
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }, [docId, content]);
 
   const scheduleAutosave = useCallback(() => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -108,12 +98,6 @@ export default function EditDocumentPage() {
   function handleTitleChange(value: string) {
     setTitle(value);
     scheduleAutosave();
-  }
-
-  async function handleToggleDraft() {
-    const next = !draft;
-    setDraft(next);
-    await flushSave({ draft: next });
   }
 
   async function handleDelete() {
@@ -150,38 +134,25 @@ export default function EditDocumentPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="border-b border-black sticky top-0 bg-white z-10">
+      <header className="border-b border-black sticky top-0 bg-[var(--background)] z-30">
         <div className="container mx-auto px-4 py-3 flex items-center gap-4">
           <Link href="/documents" className="text-sm font-semibold hover:underline">
             ← Documents
           </Link>
 
-          <span className="text-xs text-gray-400 flex-shrink-0">
+          <span className="text-xs text-gray-400">
             {saveState === "saving" && "Saving…"}
             {saveState === "saved" && "Saved"}
             {saveState === "error" && "Save failed"}
             {saveState === "idle" && "\u00A0"}
           </span>
 
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              onClick={handleToggleDraft}
-              className={`text-sm px-3 py-1.5 rounded-md border border-black font-medium transition-colors ${
-                draft
-                  ? "bg-yellow-100 hover:bg-yellow-200"
-                  : "bg-green-100 hover:bg-green-200"
-              }`}
-            >
-              {draft ? "Draft" : "Published"} · switch to{" "}
-              {draft ? "Published" : "Draft"}
-            </button>
-            <button
-              onClick={handleDelete}
-              className="text-sm px-3 py-1.5 rounded-md border border-black hover:bg-black hover:text-white transition-colors"
-            >
-              Delete
-            </button>
-          </div>
+          <button
+            onClick={handleDelete}
+            className="ml-auto text-sm px-3 py-1.5 rounded-md border border-black hover:bg-black hover:text-white transition-colors"
+          >
+            Delete
+          </button>
         </div>
       </header>
 
@@ -191,7 +162,7 @@ export default function EditDocumentPage() {
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled"
-            className="w-full text-4xl font-extrabold mb-8 outline-none placeholder:text-gray-300"
+            className="w-full text-4xl font-extrabold mb-8 outline-none placeholder:text-gray-300 bg-transparent"
           />
 
           {content !== undefined && (
