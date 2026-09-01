@@ -7,7 +7,7 @@ export default function Home() {
       <header className="border-b border-black">
         <div className="container mx-auto px-4 py-4 flex justify-start items-center">
           <h1 className="text-2xl font-bold">Scribex</h1>
-          // <nav><Link href="/edit" className="text-blue-600 hover:text-blue-800 font-medium">Edit</Link></nav>
+          
         </div>
       </header>
 
