@@ -10,7 +10,6 @@ export interface NotebookBlockData {
 // ─── Inline rendering helpers ───────────────────────────────────────────────
 
 function renderInlineMath(text: string): string {
-  // Display math first: $$...$$
   let out = text.replace(/\$\$(.*?)\$\$/g, (_, formula: string) => {
     try {
       return katex.renderToString(formula, {
@@ -22,7 +21,6 @@ function renderInlineMath(text: string): string {
       return `<span class="nb-error">${escapeHtml(formula)}</span>`;
     }
   });
-  // Inline math: $...$  (not preceded/followed by $)
   out = out.replace(/(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)/g, (_, formula: string) => {
     try {
       return katex.renderToString(formula, {
@@ -39,15 +37,10 @@ function renderInlineMath(text: string): string {
 
 function renderInline(text: string): string {
   let out = escapeHtml(text);
-  // Bold: **text**
   out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  // Italic: *text*
   out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
-  // Strikethrough: ~~text~~
   out = out.replace(/~~(.+?)~~/g, "<del>$1</del>");
-  // Inline code: `code`
   out = out.replace(/`([^`]+)`/g, '<code class="nb-inline-code">$1</code>');
-  // Math (after HTML escaping so LaTeX symbols survive)
   out = renderInlineMath(out);
   return out;
 }
@@ -77,7 +70,6 @@ function parseBlocks(source: string): ParsedBlock[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Fenced code block: ```lang ... ``` or ~~~~lang ... ~~~~
     const backtickFence = line.trimStart().startsWith("```");
     const tildeFence = line.trimStart().startsWith("~~~~");
     if (backtickFence || tildeFence) {
@@ -90,7 +82,7 @@ function parseBlocks(source: string): ParsedBlock[] {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing fence
+      i++;
       const code = codeLines.join("\n");
       blocks.push({
         type: "code",
@@ -101,7 +93,6 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Heading: # through ######
     const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -114,14 +105,12 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Horizontal rule: --- or *** or ___
     if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
       blocks.push({ type: "hr", raw: line, html: '<hr class="nb-hr" />' });
       i++;
       continue;
     }
 
-    // Blockquote (possibly admonition): > text
     if (line.trimStart().startsWith(">")) {
       const quoteLines: string[] = [];
       while (i < lines.length && lines[i].trimStart().startsWith(">")) {
@@ -130,7 +119,6 @@ function parseBlocks(source: string): ParsedBlock[] {
       }
       const content = quoteLines.join("\n");
 
-      // Check for admonition: > [!TYPE]
       const admonitionMatch = content.match(/^\[!(NOTE|TIP|WARNING|CAUTION|IMPORTANT)\]\s*\n?([\s\S]*)/i);
       if (admonitionMatch) {
         const type = admonitionMatch[1].toLowerCase();
@@ -150,7 +138,6 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Unordered list: - item or * item
     if (/^\s*[-*]\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
@@ -166,7 +153,6 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Ordered list: 1. item
     if (/^\s*\d+\.\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
@@ -182,7 +168,6 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Checklist: - [ ] or - [x]
     if (/^\s*-\s*\[[ x]\]\s+/i.test(line)) {
       const items: string[] = [];
       const checked: boolean[] = [];
@@ -208,13 +193,11 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Empty line — skip
     if (line.trim() === "") {
       i++;
       continue;
     }
 
-    // Default: paragraph (collect consecutive non-empty, non-special lines)
     const paraLines: string[] = [];
     while (
       i < lines.length &&
@@ -272,7 +255,8 @@ export class NotebookBlock {
   private wrapper!: HTMLElement;
   private textarea!: HTMLTextAreaElement;
   private preview!: HTMLElement;
-  private renderedBlocks: HTMLElement[] = [];
+  private toggleBtn!: HTMLButtonElement;
+  private mode: "edit" | "preview" = "edit";
 
   static get toolbox() {
     return {
@@ -291,67 +275,24 @@ export class NotebookBlock {
     this.wrapper = document.createElement("div");
     this.wrapper.className = "notebook-block";
 
-    // Hint bar
-    const hint = document.createElement("div");
-    hint.className = "nb-hint";
-    hint.innerHTML = `
-      <span class="nb-hint-title">SMART NOTEBOOK</span>
-      <span class="nb-hint-sep">·</span>
-      <span class="nb-hint-syntax"><code>#</code> heading <code>**bold**</code> <code>*italic*</code> <code>$math$</code> <code>\`\`\`lang</code> code <code>---</code> hr <code>&gt;</code> quote <code>- </code> list</span>
-    `;
+    // Toggle button — this is what was missing: a real way to switch
+    // between editing the raw content and viewing the rendered preview.
+    this.toggleBtn = document.createElement("button");
+    this.toggleBtn.type = "button";
+    this.toggleBtn.className = "nb-toggle";
+    this.toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.setMode(this.mode === "edit" ? "preview" : "edit");
+    });
 
-    // Textarea
     this.textarea = document.createElement("textarea");
     this.textarea.className = "nb-textarea";
     this.textarea.value = this.data.content;
-    this.textarea.placeholder = [
-      "# Smart Notebook",
-      "",
-      "Write rich content with simple syntax:",
-      "",
-      "## Headings",
-      "Use # for H1, ## for H2, ### for H3, etc.",
-      "",
-      "## Math",
-      "Inline math: $E = mc^2$ flows with text.",
-      "Display math gets its own line:",
-      "$$\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$$",
-      "",
-      "## Code",
-      "Inline: \`console.log('hello')\`",
-      "Fenced blocks with language highlighting:",
-      "```python",
-      "def fib(n): return n if n < 2 else fib(n-1) + fib(n-2)",
-      "```",
-      "",
-      "## Diagrams",
-      "```mermaid",
-      "graph TD; A[Start] --> B[Process] --> C[End]",
-      "```",
-      "",
-      "## Formatting",
-      "**Bold text** and *italic text* and ~~strikethrough~~",
-      "",
-      "- Unordered list item",
-      "1. Ordered list item",
-      "- [ ] Checkbox item",
-      "",
-      "> Blockquote text",
-      "> [!TIP] This is a helpful tip",
-      "",
-      "---",
-    ].join("\n");
+    this.textarea.placeholder =
+      "# Heading\n\nWrite with **bold**, *italic*, $math$, ```code``` blocks, > quotes, and - lists.";
     this.textarea.addEventListener("input", () => {
       this.data.content = this.textarea.value;
-      this.renderPreview();
     });
-    this.textarea.addEventListener("focus", () => {
-      this.textarea.style.borderColor = "oklch(0.72 0.19 180)";
-    });
-    this.textarea.addEventListener("blur", () => {
-      this.textarea.style.borderColor = "oklch(0.22 0.02 250)";
-    });
-    // Tab key inserts spaces instead of moving focus
     this.textarea.addEventListener("keydown", (e) => {
       if (e.key === "Tab") {
         e.preventDefault();
@@ -363,41 +304,45 @@ export class NotebookBlock {
           this.textarea.value.substring(end);
         this.textarea.selectionStart = this.textarea.selectionEnd = start + 2;
         this.data.content = this.textarea.value;
-        this.renderPreview();
       }
     });
 
-    // Preview
     this.preview = document.createElement("div");
     this.preview.className = "nb-preview";
 
-    this.wrapper.appendChild(hint);
+    this.wrapper.appendChild(this.toggleBtn);
     this.wrapper.appendChild(this.textarea);
     this.wrapper.appendChild(this.preview);
 
-    setTimeout(() => this.renderPreview(), 10);
+    this.setMode("edit");
 
     return this.wrapper;
+  }
+
+  private setMode(mode: "edit" | "preview"): void {
+    this.mode = mode;
+    if (mode === "edit") {
+      this.textarea.style.display = "block";
+      this.preview.style.display = "none";
+      this.toggleBtn.textContent = "Preview";
+    } else {
+      this.textarea.style.display = "none";
+      this.preview.style.display = "block";
+      this.toggleBtn.textContent = "Edit";
+      this.renderPreview();
+    }
   }
 
   private renderPreview(): void {
     if (!this.data.content.trim()) {
       this.preview.innerHTML =
-        '<span class="nb-empty">Preview will appear here as you type...</span>';
+        '<span class="nb-empty">Nothing to preview yet.</span>';
       return;
     }
 
-    // Clear previous mermaid instances
-    this.renderedBlocks.forEach((el) => {
-      const mermaidEls = el.querySelectorAll(".nb-mermaid-container svg");
-      mermaidEls.forEach((svg) => svg.remove());
-    });
-
     const blocks = parseBlocks(this.data.content);
     this.preview.innerHTML = blocks.map((b) => b.html).join("\n");
-    this.renderedBlocks = Array.from(this.preview.children) as HTMLElement[];
 
-    // Render mermaid diagrams
     const mermaidContainers = this.preview.querySelectorAll(".nb-mermaid-container");
     mermaidContainers.forEach(async (container) => {
       const el = container as HTMLElement;
