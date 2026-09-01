@@ -49,6 +49,21 @@ declare module "@editorjs/delimiter" {
   }
 }
 
+declare module "@editorjs/link" {
+  import { BlockTool, BlockToolConstructorOptions } from "@editorjs/editorjs";
+  export default class LinkTool implements BlockTool {
+    constructor(options: BlockToolConstructorOptions);
+    static get toolbox(): { title: string; icon: string };
+    render(): HTMLElement;
+    save(block: HTMLElement): { link: string };
+  }
+}
+
+declare module "editorjs-text-alignment-blocktune" {
+  const AlignmentBlockTune: unknown;
+  export default AlignmentBlockTune;
+}
+
 declare module "@editorjs/inline-code" {
   import { InlineTool, InlineToolConstructorOptions } from "@editorjs/editorjs";
   export default class InlineCode implements InlineTool {
