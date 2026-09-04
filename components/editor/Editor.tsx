@@ -110,6 +110,7 @@ export default function Editor({
           <button type="button" onClick={() => insertBlock("header")}>
             H
           </button>
+          {/* 
           <button type="button" onClick={() => insertBlock("list")}>
             List
           </button>
@@ -125,6 +126,7 @@ export default function Editor({
           <button type="button" onClick={() => insertBlock("image")}>
             Image
           </button>
+          */}
           <button type="button" onClick={() => insertBlock("latex")}>
             Math
           </button>
