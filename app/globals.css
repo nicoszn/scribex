@@ -101,9 +101,6 @@ body {
 
 /* ==========================================================================
    Editor.js — floating toolbar & toolbox
-   Default Editor.js chrome is nearly invisible on a plain background.
-   Give it a clear card, a fixed max width, and keep the plus/settings
-   controls comfortably visible near the active block.
    ========================================================================== */
 
 .editorjs-holder .ce-toolbar__plus,
@@ -144,8 +141,7 @@ body {
   background: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
-/* A persistent floating action bar docked to the top of the editor, always
-   visible rather than only appearing on hover/selection. */
+/* Persistent floating action bar */
 .editor-floating-bar {
   position: sticky;
   top: 0.75rem;
@@ -178,8 +174,6 @@ body {
 
 /* ==========================================================================
    Custom blocks — latex, mermaid, math paragraph, notebook
-   Neutral styling that inherits from the app's own colors instead of a
-   separate hardcoded dark theme.
    ========================================================================== */
 
 .custom-block {
@@ -274,10 +268,10 @@ body {
 /* --- Notebook block --- */
 
 .notebook-block {
-  border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
-  border-radius: 10px;
-  padding: 12px;
-  background: color-mix(in srgb, var(--foreground) 3%, transparent);
+  /* FIX: Removed background and border */
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important; /* adjust if needed */
   position: relative;
 }
 
@@ -318,11 +312,11 @@ body {
 }
 
 .nb-preview {
-  padding: 16px;
-  padding-top: 34px;
-  background: var(--background);
-  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
-  border-radius: 8px;
+  /* FIX: Removed background and border, added overflow-x for long math */
+  background: transparent !important;
+  border: none !important;
+  overflow-x: auto;
+  padding: 8px 0; /* minimal padding, adjust as needed */
   min-height: 60px;
 }
 
@@ -439,4 +433,3 @@ body {
   margin-bottom: 4px;
 }
 .nb-admonition-body { line-height: 1.6; }
-
