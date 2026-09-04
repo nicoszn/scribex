@@ -9,50 +9,70 @@ export interface NotebookBlockData {
 
 // ─── Inline rendering helpers ───────────────────────────────────────────────
 
-function renderInlineMath(text: string): string {
-  // Display math first: $$...$$
-  let out = text.replace(/\$\$(.*?)\$\$/g, (_, formula: string) => {
-    try {
-      return katex.renderToString(formula, {
-        displayMode: true,
-        throwOnError: false,
-        trust: true,
-      });
-    } catch {
-      return `<span class="nb-error">${escapeHtml(formula)}</span>`;
-    }
-  });
-  // Inline math: $...$ (not preceded/followed by $)
-  out = out.replace(/(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)/g, (_, formula: string) => {
-    try {
-      return katex.renderToString(formula, {
-        displayMode: false,
-        throwOnError: false,
-        trust: true,
-      });
-    } catch {
-      return `<span class="nb-error">${escapeHtml(formula)}</span>`;
-    }
-  });
-  return out;
-}
-
-function renderInline(text: string): string {
-  let out = escapeHtml(text);
-  out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
-  out = out.replace(/~~(.+?)~~/g, "<del>$1</del>");
-  out = out.replace(/`([^`]+)`/g, '<code class="nb-inline-code">$1</code>');
-  out = renderInlineMath(out);
-  return out;
-}
-
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/**
+ * Renders inline content with:
+ * - Math ($$...$$ display, $...$ inline)
+ * - Bold/italic/strikethrough/inline code
+ * - All HTML is properly escaped except for generated markup
+ */
+function renderInline(text: string): string {
+  // 1. Extract all math expressions and replace with placeholders
+  interface MathItem {
+    formula: string;
+    displayMode: boolean;
+  }
+  const mathItems: MathItem[] = [];
+  let temp = text;
+
+  // Display math: $$...$$
+  temp = temp.replace(/\$\$(.*?)\$\$/g, (_, formula) => {
+    mathItems.push({ formula, displayMode: true });
+    return `__MATH_DISP_${mathItems.length - 1}__`;
+  });
+
+  // Inline math: $...$ (not preceded/followed by $)
+  temp = temp.replace(/(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)/g, (_, formula) => {
+    mathItems.push({ formula, displayMode: false });
+    return `__MATH_INLN_${mathItems.length - 1}__`;
+  });
+
+  // 2. Escape the rest of the text (safe now because math is placeholders)
+  let out = escapeHtml(temp);
+
+  // 3. Apply inline markup (bold, italic, strikethrough, code)
+  out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
+  out = out.replace(/~~(.+?)~~/g, "<del>$1</del>");
+  out = out.replace(/`([^`]+)`/g, '<code class="nb-inline-code">$1</code>');
+
+  // 4. Render math placeholders with KaTeX (insert raw HTML, not escaped again)
+  for (let i = 0; i < mathItems.length; i++) {
+    const item = mathItems[i];
+    const placeholder = item.displayMode
+      ? `__MATH_DISP_${i}__`
+      : `__MATH_INLN_${i}__`;
+    let rendered: string;
+    try {
+      rendered = katex.renderToString(item.formula, {
+        displayMode: item.displayMode,
+        throwOnError: false,
+        trust: true,
+      });
+    } catch {
+      rendered = `<span class="nb-error">${escapeHtml(item.formula)}</span>`;
+    }
+    out = out.replace(placeholder, rendered);
+  }
+
+  return out;
 }
 
 // ─── Block-level parsing ────────────────────────────────────────────────────
@@ -94,7 +114,10 @@ function parseBlocks(source: string): ParsedBlock[] {
       const lang = line.trimStart().slice(fenceLen).trim();
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].trimStart().startsWith(fenceChar.repeat(fenceLen))) {
+      while (
+        i < lines.length &&
+        !lines[i].trimStart().startsWith(fenceChar.repeat(fenceLen))
+      ) {
         codeLines.push(lines[i]);
         i++;
       }
@@ -129,7 +152,7 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
-    // Standalone display math block: line contains only $$...$$ (with optional whitespace)
+    // Standalone display math line: $$...$$ (only that on the line)
     const trimmed = line.trim();
     if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4) {
       const formula = trimmed.slice(2, -2).trim();
@@ -151,7 +174,9 @@ function parseBlocks(source: string): ParsedBlock[] {
       }
       const content = quoteLines.join("\n");
 
-      const admonitionMatch = content.match(/^\[!(NOTE|TIP|WARNING|CAUTION|IMPORTANT)\]\s*\n?([\s\S]*)/i);
+      const admonitionMatch = content.match(
+        /^\[!(NOTE|TIP|WARNING|CAUTION|IMPORTANT)\]\s*\n?([\s\S]*)/i,
+      );
       if (admonitionMatch) {
         const type = admonitionMatch[1].toLowerCase();
         const body = admonitionMatch[2];
@@ -246,8 +271,11 @@ function parseBlocks(source: string): ParsedBlock[] {
       !/^\s*\d+\.\s+/.test(lines[i]) &&
       !/^\s*[-*]\s*\[[ x]\]/i.test(lines[i]) &&
       !/^(\*{3,}|-{3,}|_{3,})\s*$/.test(lines[i].trim()) &&
-      // Do NOT collect lines that are standalone display math (they are already handled)
-      !(lines[i].trim().startsWith("$$") && lines[i].trim().endsWith("$$") && lines[i].trim().length > 4)
+      !(
+        lines[i].trim().startsWith("$$") &&
+        lines[i].trim().endsWith("$$") &&
+        lines[i].trim().length > 4
+      )
     ) {
       paraLines.push(lines[i]);
       i++;
@@ -255,7 +283,7 @@ function parseBlocks(source: string): ParsedBlock[] {
     if (paraLines.length > 0) {
       const rawText = paraLines.join("\n");
       let renderedHtml = renderInline(rawText);
-      // Replace actual newline characters with <br> tags (after math & escaping)
+      // Replace newlines with <br> (after math rendering and escaping)
       renderedHtml = renderedHtml.replace(/\n/g, "<br>");
       blocks.push({
         type: "paragraph",
