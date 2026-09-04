@@ -10,6 +10,7 @@ export interface NotebookBlockData {
 // ─── Inline rendering helpers ───────────────────────────────────────────────
 
 function renderInlineMath(text: string): string {
+  // Display math first: $$...$$
   let out = text.replace(/\$\$(.*?)\$\$/g, (_, formula: string) => {
     try {
       return katex.renderToString(formula, {
@@ -21,6 +22,7 @@ function renderInlineMath(text: string): string {
       return `<span class="nb-error">${escapeHtml(formula)}</span>`;
     }
   });
+  // Inline math: $...$ (not preceded/followed by $)
   out = out.replace(/(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)/g, (_, formula: string) => {
     try {
       return katex.renderToString(formula, {
@@ -36,14 +38,11 @@ function renderInlineMath(text: string): string {
 }
 
 function renderInline(text: string): string {
-  // First, escape HTML characters to prevent injection.
   let out = escapeHtml(text);
-  // Inline markup:
   out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
   out = out.replace(/~~(.+?)~~/g, "<del>$1</del>");
   out = out.replace(/`([^`]+)`/g, '<code class="nb-inline-code">$1</code>');
-  // Math rendering (after escaping so LaTeX symbols survive):
   out = renderInlineMath(out);
   return out;
 }
@@ -63,6 +62,19 @@ interface ParsedBlock {
   html: string;
   raw: string;
   lang?: string;
+}
+
+function renderMathBlock(formula: string, displayMode: boolean): string {
+  try {
+    const html = katex.renderToString(formula, {
+      displayMode,
+      throwOnError: false,
+      trust: true,
+    });
+    return `<div class="nb-math-block">${html}</div>`;
+  } catch {
+    return `<div class="nb-error">${escapeHtml(formula)}</div>`;
+  }
 }
 
 function parseBlocks(source: string): ParsedBlock[] {
@@ -113,6 +125,19 @@ function parseBlocks(source: string): ParsedBlock[] {
     // Horizontal rule: --- or *** or ___
     if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
       blocks.push({ type: "hr", raw: line, html: '<hr class="nb-hr" />' });
+      i++;
+      continue;
+    }
+
+    // Standalone display math block: line contains only $$...$$ (with optional whitespace)
+    const trimmed = line.trim();
+    if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 4) {
+      const formula = trimmed.slice(2, -2).trim();
+      blocks.push({
+        type: "math",
+        raw: trimmed,
+        html: renderMathBlock(formula, true),
+      });
       i++;
       continue;
     }
@@ -220,13 +245,14 @@ function parseBlocks(source: string): ParsedBlock[] {
       !/^\s*[-*]\s+/.test(lines[i]) &&
       !/^\s*\d+\.\s+/.test(lines[i]) &&
       !/^\s*[-*]\s*\[[ x]\]/i.test(lines[i]) &&
-      !/^(\*{3,}|-{3,}|_{3,})\s*$/.test(lines[i].trim())
+      !/^(\*{3,}|-{3,}|_{3,})\s*$/.test(lines[i].trim()) &&
+      // Do NOT collect lines that are standalone display math (they are already handled)
+      !(lines[i].trim().startsWith("$$") && lines[i].trim().endsWith("$$") && lines[i].trim().length > 4)
     ) {
       paraLines.push(lines[i]);
       i++;
     }
     if (paraLines.length > 0) {
-      // 🔧 FIX: Join with newline, render, then replace newlines with <br>
       const rawText = paraLines.join("\n");
       let renderedHtml = renderInline(rawText);
       // Replace actual newline characters with <br> tags (after math & escaping)
@@ -292,7 +318,6 @@ export class NotebookBlock {
     this.wrapper = document.createElement("div");
     this.wrapper.className = "notebook-block";
 
-    // Toggle button (Edit/Preview)
     this.toggleBtn = document.createElement("button");
     this.toggleBtn.type = "button";
     this.toggleBtn.className = "nb-toggle";
