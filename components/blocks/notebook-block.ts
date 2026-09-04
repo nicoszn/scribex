@@ -36,11 +36,14 @@ function renderInlineMath(text: string): string {
 }
 
 function renderInline(text: string): string {
+  // First, escape HTML characters to prevent injection.
   let out = escapeHtml(text);
+  // Inline markup:
   out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
   out = out.replace(/~~(.+?)~~/g, "<del>$1</del>");
   out = out.replace(/`([^`]+)`/g, '<code class="nb-inline-code">$1</code>');
+  // Math rendering (after escaping so LaTeX symbols survive):
   out = renderInlineMath(out);
   return out;
 }
@@ -70,6 +73,7 @@ function parseBlocks(source: string): ParsedBlock[] {
   while (i < lines.length) {
     const line = lines[i];
 
+    // Fenced code block: ```lang ... ``` or ~~~~lang ... ~~~~
     const backtickFence = line.trimStart().startsWith("```");
     const tildeFence = line.trimStart().startsWith("~~~~");
     if (backtickFence || tildeFence) {
@@ -82,7 +86,7 @@ function parseBlocks(source: string): ParsedBlock[] {
         codeLines.push(lines[i]);
         i++;
       }
-      i++;
+      i++; // skip closing fence
       const code = codeLines.join("\n");
       blocks.push({
         type: "code",
@@ -93,6 +97,7 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
+    // Heading: # through ######
     const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -105,12 +110,14 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
+    // Horizontal rule: --- or *** or ___
     if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
       blocks.push({ type: "hr", raw: line, html: '<hr class="nb-hr" />' });
       i++;
       continue;
     }
 
+    // Blockquote (possibly admonition): > text
     if (line.trimStart().startsWith(">")) {
       const quoteLines: string[] = [];
       while (i < lines.length && lines[i].trimStart().startsWith(">")) {
@@ -138,6 +145,7 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
+    // Unordered list: - item or * item
     if (/^\s*[-*]\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
@@ -153,6 +161,7 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
+    // Ordered list: 1. item
     if (/^\s*\d+\.\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
@@ -168,6 +177,7 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
+    // Checklist: - [ ] or - [x]
     if (/^\s*-\s*\[[ x]\]\s+/i.test(line)) {
       const items: string[] = [];
       const checked: boolean[] = [];
@@ -193,11 +203,13 @@ function parseBlocks(source: string): ParsedBlock[] {
       continue;
     }
 
+    // Empty line — skip
     if (line.trim() === "") {
       i++;
       continue;
     }
 
+    // Default: paragraph (collect consecutive non-empty, non-special lines)
     const paraLines: string[] = [];
     while (
       i < lines.length &&
@@ -214,10 +226,15 @@ function parseBlocks(source: string): ParsedBlock[] {
       i++;
     }
     if (paraLines.length > 0) {
+      // 🔧 FIX: Join with newline, render, then replace newlines with <br>
+      const rawText = paraLines.join("\n");
+      let renderedHtml = renderInline(rawText);
+      // Replace actual newline characters with <br> tags (after math & escaping)
+      renderedHtml = renderedHtml.replace(/\n/g, "<br>");
       blocks.push({
         type: "paragraph",
-        raw: paraLines.join("\n"),
-        html: `<p class="nb-paragraph">${renderInline(paraLines.join("<br>"))}</p>`,
+        raw: rawText,
+        html: `<p class="nb-paragraph">${renderedHtml}</p>`,
       });
     }
   }
@@ -275,8 +292,7 @@ export class NotebookBlock {
     this.wrapper = document.createElement("div");
     this.wrapper.className = "notebook-block";
 
-    // Toggle button — this is what was missing: a real way to switch
-    // between editing the raw content and viewing the rendered preview.
+    // Toggle button (Edit/Preview)
     this.toggleBtn = document.createElement("button");
     this.toggleBtn.type = "button";
     this.toggleBtn.className = "nb-toggle";
