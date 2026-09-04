@@ -297,14 +297,16 @@ function parseBlocks(source: string): ParsedBlock[] {
 }
 
 function renderCodeBlock(code: string, lang: string): string {
-  const escaped = escapeHtml(code);
-  const langClass = lang ? ` language-${lang}` : "";
-
+  // 🔧 FIX: For Mermaid, store raw code encoded in URI to preserve ampersands, arrows, etc.
   if (lang === "mermaid") {
     const id = `nb-mermaid-${++notebookMermaidId}`;
-    return `<div class="nb-mermaid-container" data-mermaid-id="${id}" data-mermaid-code="${escapeHtml(code).replace(/"/g, "&quot;")}"><div class="nb-mermaid-placeholder">Rendering diagram...</div></div>`;
+    const encoded = encodeURIComponent(code);
+    return `<div class="nb-mermaid-container" data-mermaid-id="${id}" data-mermaid-code="${encoded}"><div class="nb-mermaid-placeholder">Rendering diagram...</div></div>`;
   }
 
+  // For other code blocks, escape HTML as usual
+  const escaped = escapeHtml(code);
+  const langClass = lang ? ` language-${lang}` : "";
   return `<pre class="nb-code-block"><code class="nb-code${langClass}">${escaped}</code>${lang ? `<span class="nb-code-lang">${escapeHtml(lang)}</span>` : ""}</pre>`;
 }
 
@@ -412,15 +414,20 @@ export class NotebookBlock {
     const blocks = parseBlocks(this.data.content);
     this.preview.innerHTML = blocks.map((b) => b.html).join("\n");
 
+    // Render Mermaid diagrams
     const mermaidContainers = this.preview.querySelectorAll(".nb-mermaid-container");
     mermaidContainers.forEach(async (container) => {
       const el = container as HTMLElement;
-      const code = el.getAttribute("data-mermaid-code") || "";
+      const encoded = el.getAttribute("data-mermaid-code") || "";
+      if (!encoded) return;
+      // Decode the URI-encoded raw code
+      const raw = decodeURIComponent(encoded);
       const id = el.getAttribute("data-mermaid-id") || `nb-mermaid-${Date.now()}`;
       try {
-        const { svg } = await mermaid.render(id, code);
+        const { svg } = await mermaid.render(id, raw);
         el.innerHTML = svg;
-      } catch {
+      } catch (err) {
+        console.error("Mermaid render error:", err);
         el.innerHTML = `<div class="nb-error">Failed to render diagram</div>`;
       }
     });
