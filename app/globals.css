@@ -375,12 +375,16 @@ body {
   border: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
   border-radius: 8px;
   padding: 12px;
-  overflow-x: auto;
+  overflow-x: visible !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
   margin: 0.5em 0;
 }
 .nb-code {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.85em;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
 }
 .nb-code-lang {
   position: absolute;
