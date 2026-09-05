@@ -5,6 +5,7 @@ import type EditorJS from "@editorjs/editorjs";
 import type { OutputData } from "@editorjs/editorjs";
 import { EDITOR_TOOLS } from "./editor-tools";
 import InlineMath from "./inlineMath";
+import { broadcastMode, type ViewMode } from "./global-mode";
 
 export interface EditorHandle {
   save: () => Promise<OutputData>;
@@ -39,6 +40,7 @@ export default function Editor({
   const holderRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorJS | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [globalMode, setGlobalMode] = useState<ViewMode>("edit");
 
   const handleChange = useCallback(async () => {
     if (!editorRef.current || !onChange) return;
@@ -99,6 +101,12 @@ export default function Editor({
     editorRef.current?.blocks.insert(type);
   }
 
+  function toggleGlobalMode() {
+    const next: ViewMode = globalMode === "edit" ? "preview" : "edit";
+    setGlobalMode(next);
+    broadcastMode(next);
+  }
+
   return (
     <div className="editor-wrapper">
       {!isReady && (
@@ -110,7 +118,6 @@ export default function Editor({
           <button type="button" onClick={() => insertBlock("header")}>
             H
           </button>
-          {/* 
           <button type="button" onClick={() => insertBlock("list")}>
             List
           </button>
@@ -126,7 +133,6 @@ export default function Editor({
           <button type="button" onClick={() => insertBlock("image")}>
             Image
           </button>
-          */}
           <button type="button" onClick={() => insertBlock("latex")}>
             Math
           </button>
@@ -135,6 +141,10 @@ export default function Editor({
           </button>
           <button type="button" onClick={() => insertBlock("notebook")}>
             Notebook
+          </button>
+          <span className="editor-floating-bar-divider" />
+          <button type="button" onClick={toggleGlobalMode}>
+            {globalMode === "edit" ? "Preview all" : "Edit all"}
           </button>
         </div>
       )}
