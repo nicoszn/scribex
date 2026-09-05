@@ -47,8 +47,10 @@ export class MathInlineBlock {
   private preview!: HTMLElement;
   private viewToggle!: HTMLButtonElement;
   private mode: ViewMode;
+  private isGlobalControlled = false;
   private onGlobalMode = (e: Event) => {
     const mode = (e as CustomEvent<{ mode: ViewMode }>).detail.mode;
+    this.isGlobalControlled = true;
     this.setMode(mode);
   };
 
@@ -84,6 +86,7 @@ export class MathInlineBlock {
     this.viewToggle.className = "custom-block-toggle";
     this.viewToggle.addEventListener("click", (e) => {
       e.stopPropagation();
+      this.isGlobalControlled = false;
       this.setMode(this.mode === "edit" ? "preview" : "edit");
     });
 
@@ -114,6 +117,7 @@ export class MathInlineBlock {
   private setMode(mode: ViewMode): void {
     this.mode = mode;
     this.data.viewMode = mode;
+    this.viewToggle.style.display = this.isGlobalControlled ? "none" : "inline-block";
     if (mode === "edit") {
       this.textarea.style.display = "block";
       this.preview.style.display = "none";
