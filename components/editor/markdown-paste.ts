@@ -132,6 +132,40 @@ export class MarkdownPasteInterceptor {
   }
 }
 
+// ─── HTML escaping ──────────────────────────────────────────────────────────
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+// ─── Inline markdown → HTML ─────────────────────────────────────────────────
+// Follows the same approach as notebook-block.ts renderInline():
+
+function applyInlineFormatting(text: string): string {
+  // 1. Escape existing HTML so user content can't inject markup
+  let out = escapeHtml(text);
+
+  // 2. Bold: **text** or __text__
+  out = out.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  out = out.replace(/__(.+?)__/g, "<b>$1</b>");
+
+  // 3. Italic: *text* or _text_  (but not inside bold markers)
+  out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<i>$1</i>");
+  out = out.replace(/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/g, "<i>$1</i>");
+
+  // 4. Strikethrough: ~~text~~
+  out = out.replace(/~~(.+?)~~/g, "<s>$1</s>");
+
+  // 5. Inline code: `text`
+  out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  return out;
+}
+
 // ─── Markdown detection ─────────────────────────────────────────────────────
 
 function looksLikeMarkdown(text: string): boolean {
@@ -197,7 +231,9 @@ function parseMarkdown(source: string): ParsedMarkdownBlock[] {
     const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
-      blocks.push({ type: "header", data: { text: headingMatch[2], level } });
+      // Apply inline formatting to heading text
+      const text = applyInlineFormatting(headingMatch[2]);
+      blocks.push({ type: "header", data: { text, level } });
       i++;
       continue;
     }
@@ -224,9 +260,11 @@ function parseMarkdown(source: string): ParsedMarkdownBlock[] {
         quoteLines.push(lines[i].replace(/^>\s?/, ""));
         i++;
       }
+      // Apply inline formatting to quote text
+      const text = applyInlineFormatting(quoteLines.join("\n"));
       blocks.push({
         type: "quote",
-        data: { text: quoteLines.join("\n"), caption: "", alignment: "left" },
+        data: { text, caption: "", alignment: "left" },
       });
       continue;
     }
@@ -235,7 +273,8 @@ function parseMarkdown(source: string): ParsedMarkdownBlock[] {
     if (/^\s*[-*+]\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\s*[-*+]\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^\s*[-*+]\s+/, ""));
+        // Apply inline formatting to each list item
+        items.push(applyInlineFormatting(lines[i].replace(/^\s*[-*+]\s+/, "")));
         i++;
       }
       blocks.push({ type: "list", data: { style: "unordered", items } });
@@ -246,7 +285,8 @@ function parseMarkdown(source: string): ParsedMarkdownBlock[] {
     if (/^\s*\d+\.\s+/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^\s*\d+\.\s+/, ""));
+        // Apply inline formatting to each list item
+        items.push(applyInlineFormatting(lines[i].replace(/^\s*\d+\.\s+/, "")));
         i++;
       }
       blocks.push({ type: "list", data: { style: "ordered", items } });
@@ -277,7 +317,9 @@ function parseMarkdown(source: string): ParsedMarkdownBlock[] {
       i++;
     }
     if (paraLines.length > 0) {
-      blocks.push({ type: "paragraph", data: { text: paraLines.join("\n") } });
+      // Apply inline formatting and join multi-line paragraphs with <br>
+      const text = applyInlineFormatting(paraLines.join("\n")).replace(/\n/g, "<br>");
+      blocks.push({ type: "paragraph", data: { text } });
     }
   }
 
@@ -311,7 +353,9 @@ function parseTable(
     const row = rawRows[r];
     // Pad row to match header width
     while (row.length < headerRow.length) row.push("");
-    tableData.push(row.slice(0, headerRow.length));
+    // Apply inline formatting to each cell
+    const formattedRow = row.slice(0, headerRow.length).map(applyInlineFormatting);
+    tableData.push(formattedRow);
   }
 
   return {
