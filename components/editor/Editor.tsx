@@ -5,6 +5,7 @@ import type EditorJS from "@editorjs/editorjs";
 import type { OutputData } from "@editorjs/editorjs";
 import { EDITOR_TOOLS } from "./editor-tools";
 import InlineMath from "./inlineMath";
+import { MarkdownPasteInterceptor } from "./markdown-paste";
 import { broadcastMode, type ViewMode } from "./global-mode";
 
 export interface EditorHandle {
@@ -39,6 +40,7 @@ export default function Editor({
 }: EditorProps) {
   const holderRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorJS | null>(null);
+  const pasteInterceptorRef = useRef<MarkdownPasteInterceptor | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [globalMode, setGlobalMode] = useState<ViewMode>("edit");
 
@@ -80,6 +82,16 @@ export default function Editor({
       editorRef.current = editor;
       await editor.isReady;
       if (cancelled) return;
+
+      // Attach the markdown paste interceptor
+      if (holderRef.current) {
+        pasteInterceptorRef.current = new MarkdownPasteInterceptor(
+          editor,
+          holderRef.current,
+        );
+        pasteInterceptorRef.current.attach();
+      }
+
       setIsReady(true);
       onReady?.(editor);
     }
@@ -88,6 +100,8 @@ export default function Editor({
 
     return () => {
       cancelled = true;
+      pasteInterceptorRef.current?.detach();
+      pasteInterceptorRef.current = null;
       if (editorRef.current && typeof editorRef.current.destroy === "function") {
         editorRef.current.destroy();
       }
